@@ -129,3 +129,61 @@ Configure the following security groups with specific inbound rules to ensure se
   - Security Group: Attach the `DB-Tier-SG` for secure connectivity.
 
 </details>
+
+---
+
+<details>
+<summary><strong>Create App-Tier Server</strong></summary>
+
+##### Creating a Testing Server to Check Functionality
+
+- **EC2 Instance**: Launch an `EC2` instance with:
+  - AMI: `Amazon Linux 2023 AMI`.
+  - Instance Type: `t2.micro`.
+  - Key Pair: None (use Session Manager for access).
+  - Network: Select the project’s `VPC`, an App Tier subnet (`10.0.2.0/24` or `10.0.5.0/24`), and the `App-Tier-SG` security group.
+  - IAM Role: Attach the previously created `IAM Role` via the instance profile.
+- **Setup**: Connect to the EC2 instance using AWS Session Manager and install required packages by running the commands listed in [this file](link-to-commands-file) (available in the repo).
+
+#### Creating an Auto-Scaling Group
+
+After verifying functionality on the test server:
+
+- **AMI Creation**: Create an `AMI` from the configured EC2 instance.
+- **Launch Template**: Set up a `Launch Template` with:
+  - AMI: Use the custom AMI created above.
+  - Security Group: Select `App-Tier-SG`.
+  - IAM Role: Add the correct role under advanced settings.
+- **Target Group**: Create a `Target Group` with:
+  - Port: `4000`.
+- **Application Load Balancer**: Configure an internal `Application Load Balancer`:
+  - Type: Internal (not internet-facing).
+  - VPC: Select the project’s `VPC`.
+  - Subnets: Use both App Tier subnets (`10.0.2.0/24`, `10.0.5.0/24`) across AZs.
+  - Security Group: Select `Internal-Load-Balancer-SG`.
+  - Target Group: Link to the created target group.
+- **Auto Scaling Group**: Set up an `Auto Scaling Group` with:
+  - Launch Template: Use the one created above.
+  - VPC: Select the project’s `VPC`.
+  - Subnets: Include both App Tier subnets.
+  - Load Balancer: Attach to the internal load balancer and target group.
+- **NGINX Configuration**: Edit the `nginx.conf` file locally to include the Internal Load Balancer’s DNS, then upload it to the `S3` bucket.
+
+</details>
+
+---
+
+<details>
+<summary><strong>Create Web-Tier Server</strong></summary>
+
+- **Follow App Tier Steps**: Use a similar process as the App Tier server setup:
+  - Launch an `EC2` instance with:
+    - AMI: `Amazon Linux 2023 AMI`.
+    - Instance Type: `t2.micro`.
+    - Key Pair: None (use Session Manager).
+    - Network: Select the project’s `VPC`, a Web Tier subnet (`10.0.1.0/24` or `10.0.4.0/24`), and the `Web-Tier-SG` security group.
+    - IAM Role: Attach the previously created `IAM Role` via the instance profile.
+  - Connect via Session Manager and install required packages using the commands in [this file](link-to-commands-file) (available in the repo).
+- **Scaling**: After testing, follow the same steps as the App Tier to create an AMI, Launch Template, Target Group, Load Balancer (external this time), and Auto Scaling Group, adjusting for Web Tier specifics (e.g., port `80`, `External-Load-Balancer-SG`).
+
+</details>
